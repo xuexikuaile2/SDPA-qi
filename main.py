@@ -142,7 +142,25 @@ class MainPage:
             else:
                 return input_values
 
- # Page for success login
+
+class SuccessPage:
+    def __init__(self, cur_username):
+        self.cur_username = cur_username
+        details = self.__get_message
+        self.pin = details[1]
+        self.email = details[3]
+        self.address = details[2]
+        self.balance = int(details[4])
+        self.state = details[5]
+        self.kind = details[6]
+
+    @property
+    def __get_message(self):
+        with open('./Storage/Client.txt', 'r') as f:
+            data = json.loads(f.read())
+            return data['{0}'.format(self.cur_username)]
+
+    # Page for success login
     def success_page_interface(self):
         while True:
             print('-' * 30 + ' Welcome to OnlineBank ' + '-' * 30)
@@ -174,6 +192,8 @@ class MainPage:
                         if self.kind == 'Savings Account':
                             if 1.01 * money > self.balance:
                                 print(Fore.RED + 'Transfer failed, your balance is insufficient')
+                            if 1.01 * money > 1000:
+                                print(Fore.RED + 'Maximum transfer amount cannot exceed 1000')
                             else:
                                 try:
                                     # Get the respective data
@@ -200,6 +220,8 @@ class MainPage:
                         elif self.kind == 'Checking Account':
                             if money > self.balance:
                                 print(Fore.RED + 'Transfer failed, your balance is insufficient')
+                            if money > 1000:
+                                print(Fore.RED + 'Maximum transfer amount cannot exceed 1000')
                             else:
                                 try:
                                     # Get the respective data
