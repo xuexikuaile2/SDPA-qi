@@ -1,6 +1,10 @@
-"""
-Main function entry
-"""
+# This is the Main function entry
+
+# You may need to download the third-party libraries prettytable and colorama, otherwise the program will report an error
+# Your python version needs to be python 3.7+
+
+# Press ⌃R to execute it or replace it with your code.
+# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
 import json
 import sys
@@ -12,6 +16,7 @@ from OnlineBank.models import SavingsAccount, CheckingAccount
 from OnlineBank.handle import TransactionHistory
 
 init(autoreset=True)
+
 
 def check_input(input_values: str, message='>>', MaxIntConditions=3, MinIntConditions=0) -> int:
     while True:
@@ -56,9 +61,10 @@ class MainPage:
             print('\n')
             print(' ' * 22 + '1. Register Account' + ' ' * 22)
             print(' ' * 22 + '2. Login Account' + ' ' * 22)
-            print(' ' * 22 + '3. Exit' + ' ' * 22)
+            print(' ' * 22 + '3. Unfreeze your account' + ' ' * 22)
+            print(' ' * 22 + '4. Exit' + ' ' * 22)
             print('\n')
-            check_last_user_input = check_input(input_values=input('>>'))
+            check_last_user_input = check_input(input_values=input('>>'), MaxIntConditions=4)
             if check_last_user_input == 1:
                 self.registration()
             elif check_last_user_input == 2:
@@ -69,9 +75,45 @@ class MainPage:
                 else:
                     pass
             elif check_last_user_input == 3:
+                unfreeze = self.unfreeze()
+                if unfreeze:
+                    print(Fore.GREEN + 'Your account status is normal')
+                    print('\n')
+                else:
+                    pass
+
+
+            elif check_last_user_input == 4:
                 sys.exit()
             else:
                 continue
+
+    # Unfreeze your account
+    def unfreeze(self) -> Union[str, bool]:
+        check_last_username = self.__registration_check_input(input_values=input('Please enter your username >>'),
+                                                              message='Please enter your username >>')
+        check_last_pin = self.__registration_check_input(input_values=input('Please enter the PIN code >>'),
+                                                         message='Please enter the PIN code >>')
+        # Raw data
+        Raw_data = self.__get_client_data
+        # Determine if the user name has been registered
+        clients_list_name = [key for key, value in Raw_data.items()]
+        # Verify that the username is legitimate
+        if check_last_username in clients_list_name:
+            true_pin = Raw_data['{0}'.format(check_last_username)][1]
+            if true_pin != check_last_pin:
+                print(Fore.RED + 'PIN code error')
+                return False
+            else:
+                target_list = Raw_data['{0}'.format(check_last_username)]
+                target_list[5] = True
+                self.__save_client_data(client_data=Raw_data)
+                print(Fore.GREEN + 'Unfrozen successfully! Now you can log in to your account.')
+                return check_last_username
+
+        else:
+            print(Fore.RED + 'This user does not exist')
+            return False
 
     # Login function
     def login(self) -> Union[str, bool]:
@@ -90,8 +132,13 @@ class MainPage:
                 print(Fore.RED + 'PIN code error')
                 return False
             else:
-                print(Fore.GREEN + 'Login successful!')
-                return check_last_username
+                userStates = Raw_data['{0}'.format(check_last_username)][5]
+                if userStates:
+                    print(Fore.GREEN + 'Login successful!')
+                    return check_last_username
+                else:
+                    print(Fore.RED + 'Your account has been frozen.')
+
         else:
             print(Fore.RED + 'This user does not exist')
             return False
@@ -173,8 +220,9 @@ class SuccessPage:
             print(' ' * 32 + '4. View transaction history')
             print(' ' * 32 + '5. Online Deposit')
             print(' ' * 32 + '6. Change PIN code')
-            print(' ' * 32 + '7. Cancellation of accounts')
-            check_last_user_input = check_input(input_values=input('>>'), MaxIntConditions=7)
+            print(' ' * 32 + '7. Freeze this account')
+            print(' ' * 32 + '8. Cancellation of accounts')
+            check_last_user_input = check_input(input_values=input('>>'), MaxIntConditions=8)
             if check_last_user_input == 1:
                 print('Your balance is ' + Fore.GREEN + '{0}£'.format(self.balance))
                 print('\n')
@@ -207,12 +255,13 @@ class SuccessPage:
                                     self.__save_client_data(client_data=Raw_data)
                                     # Keeping transfer records
                                     History_obj = TransactionHistory(initiators=self.cur_username, receiver=receiver,
-                                                                     amount=1.01*money, state='Successful transfer')
+                                                                     amount=1.01 * money, state='Successful transfer')
                                     all_list_His = self.__get_TransactionHistory
                                     now = time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(time.time()))
                                     all_list_His['{0}'.format(now)] = History_obj.return_to_storage_list
                                     self.__save_TransactionHistory(savingOBJ=all_list_His)
-                                    print('The transfer was successful, but since you have a savings account, a 1% fee will be charged for this transfer')
+                                    print(
+                                        Fore.LIGHTBLUE_EX + 'The transfer was successful, but since you have a savings account, a 1% fee will be charged for this transfer')
                                     print('Your balance:' + Fore.GREEN + '{0} £'.format(self.balance))
                                     print('\n')
                                 except Exception as e:
@@ -240,7 +289,8 @@ class SuccessPage:
                                     now = time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(time.time()))
                                     all_list_His['{0}'.format(now)] = History_obj.return_to_storage_list
                                     self.__save_TransactionHistory(savingOBJ=all_list_His)
-                                    print('The transfer is successful, and since you have a checking account, no fees will be charged for this transfer')
+                                    print(
+                                        'The transfer is successful, and since you have a checking account, no fees will be charged for this transfer')
                                     print('Your balance:' + Fore.GREEN + '{0} £'.format(self.balance))
                                     print('\n')
                                 except Exception as e:
@@ -258,16 +308,19 @@ class SuccessPage:
             elif check_last_user_input == 3:
                 print('Your account type is{0}'.format(self.kind))
                 if self.kind == 'Savings Account':
-                    print('According to the rules, you will be charged the appropria'
+                    print(Fore.LIGHTBLUE_EX + 'According to the rules, you will be charged the appropria'
                           'te service fee for each transaction, and there is no interest rate.')
                 if self.kind == 'Checking Account':
-                    print('You are not charged a service fee for your transactions and enjoy interest rates.')
+                    print(Fore.LIGHTBLUE_EX + 'You are not charged a service fee for your transactions and enjoy interest rates.')
                 print('\n')
             # View Transfer Data
             elif check_last_user_input == 4:
                 all_list_His = self.__get_TransactionHistory
-                alls_charts_data = [[lists[0], lists[1], lists[2], lists[3], lists[4]] for keys, lists in all_list_His.items()]
-                table = PrettyTable(['Transfer Initiator', 'Receiver', 'Transfer Amount', 'Transfer Time', 'Transfer Status'], encoding=sys.stdout.encoding)
+                alls_charts_data = [[lists[0], lists[1], lists[2], lists[3], lists[4]] for keys, lists in
+                                    all_list_His.items()]
+                table = PrettyTable(
+                    ['Transfer Initiator', 'Receiver', 'Transfer Amount', 'Transfer Time', 'Transfer Status'],
+                    encoding=sys.stdout.encoding)
                 for i in alls_charts_data:
                     table.add_row([i[0], i[1], i[2], i[3], i[4]])
                 print(table)
@@ -302,6 +355,16 @@ class SuccessPage:
                 except Exception as e:
                     print(Fore.RED + 'Password change failed.\nDetailed reasons：{0}'.format(str(e)))
             elif check_last_user_input == 7:
+                # Raw data
+                Raw_data = self.__get_client_data
+                target_list = Raw_data['{0}'.format(self.cur_username)]
+                target_list[5] = False
+                self.__save_client_data(client_data=Raw_data)
+                print(Fore.GREEN + 'The account is frozen successfully and you will be returned to the initial screen.')
+                print('\n')
+                MainPage().start()
+                break
+            elif check_last_user_input == 8:
                 print('You have securely cancelled your account. \n')
                 MainPage().start()
                 break
