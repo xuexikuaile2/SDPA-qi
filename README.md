@@ -28,7 +28,8 @@
    * ### main.py
      * #### `MainPage`
        Encapsulates all the functions of the initial page and defines related functions. `MainPage` mainly includes the login part and the registration part.
-       * #### Register Account
+       * [README.md](https://github.com/xuexikuaile2/SDPA-qi/files/7833231/README.md)
+#### Register Account
          Allow users to choose different registration types and enter relevant parameters to complete the registration. The registered data will be stored in a local text file.
        * #### Login Account
          The user logs in to the system by using his username and PIN code, and the program will switch to another theme page by calling the `success_page_interface` function of `SuccessPage`.
