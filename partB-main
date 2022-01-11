@@ -1,0 +1,38 @@
+import time
+
+# Determine if it is an odd or even number
+
+
+def judgment(num: int) -> bool:
+    """
+    :param num: receives an integer
+    :return: Returns True for an even number, False for an odd number
+    """
+    # If num is divisible by 2, then it is an even number
+    if num % 2 == 0:
+        return True
+    else:
+        return False
+
+
+input_dict = [
+    7, 23, 42, 12, 23, 11, 90, 66
+]
+
+if __name__ == '__main__':
+    print('Input Arrays: {0}\n'.format(input_dict))
+    time.sleep(1)
+    # Arrays that store odd numbers
+    Odd_Number_list = [value for value in input_dict if not judgment(num=value)]
+    # Arrays that store even numbers
+    even_number = [value for value in input_dict if judgment(num=value)]
+    # Let the odd numbers be arranged in descending order
+    Odd_Number_list_down = sorted(Odd_Number_list)
+    Odd_Number_list_down.reverse()
+    # Even arrays in ascending order
+    even_number_up = sorted(even_number)
+    # Final output list
+    # Add the even list to the odd list one by one, the final odd list is the final output list
+    for even_each_value in even_number_up:
+        Odd_Number_list_down.append(even_each_value)
+    print('Output Arrays: {0}'.format(Odd_Number_list_down))
