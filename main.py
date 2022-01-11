@@ -21,21 +21,22 @@ init(autoreset=True)
 def check_input(input_values: str, message='>>', MaxIntConditions=3, MinIntConditions=0) -> int:
     """
     :param input_values: Receive user input
-    :param message: A prompt for the user to re-enter if the user's input does not match the specification
-    :param MaxIntConditions: Maximum integer
-    :param MinIntConditions: Minimum Integer
-    :return: Returns an integer
+    :param message: prompt for user to retype if user input does not match the specification
+    :param MaxIntConditions: maximum integers
+    :param MinIntConditions: the minimum integer
+    :return: return an integer
 
-    Function workflow: The function receives user input and goes through various judgments to determine if the user input is correct. If it is not correct, the function will prompt the user to keep entering until the user enters correctly.
+    Function workflow: The function receives user input and passes various judgments to determine if the user input is correct. If it is not correct, the function prompts the user to keep typing until the user is correct.
     Type of error: When the user input is empty, or not an integer, or does not meet the specified integer, the function will determine that the user input is incorrect and will prompt the user to re-enter.
     For example: the initial page calls this function in the following format
                 check_last_user_input = check_input(input_values=input('>>'), MaxIntConditions=4)
-    This means that the current user's input is passed into the function and the user's input is judged to be valid if it is in the range of 0 to 4 (not 0, but 4), corresponding to the initial page The four operations of the initial page.
+    This means that the current user's input is passed into the function and the value entered by the user is judged to be valid when it is in the range 0 to 4 (not 0, but 4), corresponding to the initial page
+    The four operations of the initial page.
     """
     while True:
         # When the input is empty
-        # if not input_values i.e. if input_values ! = True, i.e. if input_values is empty
-        # A variable with no value or an empty list can be represented as False
+        # if not input_values i.e. if input_values ! = True, i.e. if the condition is that input_values is empty
+        # A variable with no value or an empty list can be represented by False
         if not input_values:
             print(Fore.RED + 'Your input is empty, please re-enter.')
             # {0} is the booth character
@@ -80,7 +81,7 @@ class MainPage:
             initTime = datetime.datetime.strptime(values[7], "%Y.%m.%d")
             nows = datetime.datetime.strptime(time.strftime('%Y.%m.%d', time.localtime(time.time())), "%Y.%m.%d")
             Duration = (nows - initTime).days
-            values[4] = self.checking_input(days=Duration, nowMoney=values[4])
+            values[4] = "{:.2f}".format(self.checking_input(days=Duration, nowMoney=values[4]))
             news_dict[keys] = values
         self.__save_client_data(client_data=news_dict)
 
@@ -109,7 +110,7 @@ class MainPage:
             w.write(json.dumps(client_data))
 
     # Home Page Interface
-    # This is the main function that first prints the welcome message and then prints out all the businesses on the initial page for the user to choose from
+    # This is the main function that will first print the welcome message and then print out all the businesses on the initial page for the user to select
     def main_page_interface(self):
         while True:
             print('-' * 20 + ' Welcome to OnlineBank ' + '-' * 20)
@@ -153,8 +154,8 @@ class MainPage:
                 continue
 
     # Unfreeze your account
-    # Encapsulated unseal operation function (class function)
-    # Specify the return value as a string or bool type
+    # Encapsulated unpacking operator functions (class functions)
+    # Specify return value as string type or bool type
     def unfreeze(self) -> Union[str, bool]:
         # Requires the user to enter a username and checks the user input by calling the __registration_check_input method. The user will always be prompted for input when the user input does not meet the requirements.
         check_last_username = self.__registration_check_input(input_values=input('Please enter your username >>'),
@@ -168,7 +169,7 @@ class MainPage:
         # Determine if the user name has been registered
         # Extract the names of all the users
         # Store in the format of: {
-        # 'user1':[user1 name, user1 PIN, user1 address, user1 email, user1 balance, user1 status, user1 type], # 'user1':[user1 name, user1 PIN, user1 address, user1 email, user1 balance, user1 type
+        # 'user1':[user1 name, user1 PIN, user1 address, user1 email, user1 balance, user1 status, user1 type], # 'user1':[user1 name, user1 PIN, user1 address, user1 email, user1 balance, user1 status, user1 type
         # 'user2':[user2 name, user2 PIN, user2 address, user2 email, user2 balance, user2 status, user2 type], # 'user2':[user2 name, user2 PIN, user2 address, user2 email, user2 balance, user2 status, user2 type], #
         # ...
         # }
@@ -265,12 +266,13 @@ class MainPage:
         # Determine if the user name has been registered
         # Check that the username currently being registered has not already been registered by someone else
         clients_list_name = [key for key, value in Raw_data.items()]
-        # The username is already occupied by someone else
+        # This username is already occupied by someone else
         if check_last_username in clients_list_name:
             print(Fore.RED + 'This username already exists')
         else:
             try:
                 # Storage data
+
                 added_list = new_ac.return_to_storage_list
                 Raw_data['{0}'.format(check_last_username)] = added_list
                 self.__save_client_data(client_data=Raw_data)
@@ -339,7 +341,7 @@ class SuccessPage:
             # Check input
             # Print balance information
             if check_last_user_input == 1:
-                # Call self.balance directly, i.e. the current user's balance
+                # Call self.balance directly, i.e. the balance of the current user
                 print('Your balance is ' + Fore.GREEN + '{0}£'.format(self.balance))
                 print('\n')
             # Transfer operations
@@ -348,33 +350,33 @@ class SuccessPage:
                 # Check user input, no illegal characters or null characters
                 money = self.__balace_check_input(input('Please enter the transfer amount >>'))
                 # Verify recipient legitimacy
-                # Get the original user data
+                # Obtaining raw user data
                 Raw_data = self.__get_client_data
                 # Determine if the user name has been registered
                 # Get all user names
                 clients_list_name = [key for key, value in Raw_data.items()]
                 # Determine if the user to be transferred is enrolled
-                # If enrolled
+                # If registered
                 if receiver in clients_list_name:
                     # Require PIN code to verify identity
                     check_pin = input('Please enter the PIN code to verify your identity >>')
                     # If verification is successful
                     if check_pin == self.pin:
                         # Distinguished Accounts
-                        # Operate separately according to different types of accounts
+                        # Operate separately for different types of accounts
                         if self.kind == 'Savings Account':
-                            # Determine if the current balance can support the transfer
+                            # Determine if the current balance can support this transfer
                             # Savings Account charges an additional 1% service fee
                             if 1.01 * money > self.balance:
                                 print(Fore.RED + 'Transfer failed, your balance is insufficient')
-                            # Transfer restrictions, no more than 1000 in a single transfer
+                            # Transfer limit, no more than 1000 in a single transfer
                             if 1.01 * money > 1000:
                                 print(Fore.RED + 'Maximum transfer amount cannot exceed 1000')
                             else:
                                 try:
 
                                     # Get the respective data
-                                    # Get a detailed list of data for the current user and the user who transferred the money
+                                    # Get a detailed list of data about the current user and the user who transferred the money
                                     target_list = Raw_data['{0}'.format(self.cur_username)]
                                     receiver_list = Raw_data['{0}'.format(receiver)]
                                     # Amount change
@@ -400,7 +402,7 @@ class SuccessPage:
                                     # ...
                                     # }
                                     all_list_His = self.__get_TransactionHistory
-                                    # Get time
+                                    # Access time
                                     now = time.strftime('%Y-%m-%d, %H:%M:%S', time.localtime(time.time()))
                                     all_list_His['{0}'.format(now)] = History_obj.return_to_storage_list
                                     # Storage transfer history
@@ -466,6 +468,7 @@ class SuccessPage:
                     print(Fore.LIGHTBLUE_EX + 'Your account opening date is: {0}, the system will calculate your earnings based on this. '.format(self.times))
                 print('\n')
             # View Transfer Data
+            # View transfer history
             elif check_last_user_input == 4:
                 all_list_His = self.__get_TransactionHistory
                 # Get all transfer records and store them in a list
