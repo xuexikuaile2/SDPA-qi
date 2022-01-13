@@ -4,7 +4,7 @@ My name is Yingtong Qi.
 To add some use information
 In part1, the code should be run in 'main'
 In part2, the jupyter file can be run directly.
-In part3, the jupyter file can be run directly.
+In part3, the jupyter file can be run directly. And you can cilck the website in the last line of running results for more charts.
 
 
 THe following context of part3 is all in the part3 jupyter file. 
