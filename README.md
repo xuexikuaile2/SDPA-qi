@@ -1,3 +1,14 @@
+My username is kk21812.
+My name is Yingtong Qi.
+
+To add some use information
+In part1, the code should be run in 'main'
+In part2, the jupyter file can be run directly.
+In part3, the jupyter file can be run directly.
+
+
+
+
 # OnlineBank- Financial technology and data science - Yingtong Qi
 
 ## Project features
