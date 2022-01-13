@@ -7,7 +7,7 @@ In part2, the jupyter file can be run directly.
 In part3, the jupyter file can be run directly.
 
 
-
+THe following context of part3 is all in the part3 jupyter file. 
 
 # OnlineBank- Financial technology and data science - Yingtong Qi
 
@@ -459,3 +459,522 @@ In part3, the jupyter file can be run directly.
          break
          ```
          The system will freeze the current account and clear the current login information to return to the initial page. When the account is frozen, the system will ban the user. If you need to unfreeze your account please go to the initial page.
+
+
+# Part3 -- DataAnalytics
+
+
+## Project functions
+   * > #### 1. Obtain the corresponding historical data according to the stock code
+   * > #### 2. Store the acquired stock data
+   * > #### 3. Read, analyse and clean stock data
+   * > #### 4. Counting differences about stock data
+
+## Data preparation and acquisition
+   * ### Sina Finance Stock Data API Interface
+     #### We use the Sina Finance Stock Data API to obtain stock data. This is shown below
+      ```python
+      # Access to basic stock information
+      url = 'http://hq.sinajs.cn/list=sh601006'
+      ```
+     #### A GET request to this API using the `Python` third-party library `requests` gives the following feedback data.
+     ```text
+     var hq_str_sh601006="XXX, 27.55, 27.25, 26.91, 27.55, 26.20, 26.91, 26.92,22114263, 589824680, 4695, 26.91, 57590, 26.90, 14700, 26.89, 14300,26.88, 15100, 26.87, 3100, 26.92, 8900, 26.93, 14230, 26.94, 25150, 26.95, 15220, 26.96, 2008-01-11, 15:05:32";
+     ```
+     #### This string consists of a number of pieces of data stitched together, with the different meanings separated by commas. Using Python's built-in library `split` to split the string, you can get the list
+     ```python
+     var = ['XXX', '27.55', '27.25', '26.91', '27.55', '26.20', '26.91', '26.92', '22114263', '589824680', '4695', '26.91', '57590', '26.90', '14700', '26.89', '14300', '26.88', '15100', '26.87', '3100', '26.92', '8900', '26.93', '14230', '26.94', '25150', '26.95', '15220', '26.96', '2008-01-11', '15:05:32']
+     ```
+     #### This list has the following meaning from the first element in order to the last element. (The beginning is the index value)
+     * #### 0: "Daqin Railway", the name of the stock.
+     * #### 1: "27.55″, today's opening price.
+     * #### 2: "27.25″, yesterday's closing price.
+     * #### 3: "26.91″, current price.
+     * #### 4: "27.55″, today's high price.
+     * #### 5: "26.20″, today's low; * #### 5: "26.20″, today's low.
+     * #### 6: "26.91″, the bid price, i.e. "buy one" offer.
+     * #### 7: "26.92″, the bid price, i.e. "sell one" offer.
+     * #### 8: "22114263″, the number of shares traded, which is usually divided by one hundred when used as the basic unit of stock trading is one hundred shares.
+     * #### 9: "589824680″, the amount of the transaction, in "yuan", which is usually divided by 10,000, as "ten thousand" is the unit of the transaction amount for the sake of clarity.
+     * #### 10: "4695″, "buy one" request for 4695 shares, i.e. 47 lots.
+     * #### 11: "26.91″, a "buy one" quote.
+     * #### 12: "57590″, "Buy 2"
+     * #### 13: "26.90″, "Buy Two"
+     * #### 14: "14700″, "Buy 3"
+     * #### 15: "26.89″, "Buy Three"
+     * #### 16: "14300″, "Buy 4"
+     * #### 17: "26.88″, "buy four"
+     * #### 18: "15,100″, "Buy Five"
+     * #### 19: "26.87″, "Buy Five"
+     * #### 20: "3100″, "Sell One" for 3100 shares, i.e. 31 lots.
+     * #### 21: "26.92″, "Sell One" quote
+     * #### (22, 23), (24, 25), (26, 27), (28, 29) for "Sell 2" to "Sell 4" respectively
+     * #### 30: "2008-01-11", date.
+     * #### 31: "15:05:32″, time.
+     #### In addition, there is an API for getting historical stock data as follows
+       ```python
+       url = 'http://money.finance.sina.com.cn/quotes_service/api/json_v2.php' \
+              '/CN_MarketData.getKLineData?symbol={0}&scale={1}&ma={2}&datalen=' \
+              '{3}'.format(self.code, self.scale, self.ma, self.datalen)
+       ``''
+     #### shows that in the composition of the URL of this API, `code` represents the stock code, `scale` represents the time interval (in minutes), `ma` is the average value (can be 5, 10, 15, 20, 25), and `datalen` is the number of data fetched at one time.
+     #### is also accessed using the `requests` library, which gives json data with a structure similar to the following
+     ```json
+     [{"day": "2022-01-10 15:00:00", "open": "24.680", "high": "25.140", "low": "24.380", "close": "25.140", "volume": "3965150", "ma_price20": 21.105, "ma_volume20":3964285}]
+     ```''
+     #### shows that the API will return a list which holds `datalen` data. Each entry is a json dictionary containing the following main fields
+     * #### day: time
+     * #### open: the opening price
+     * #### high: the highest share price for the time period
+     * #### low: the lowest share price at that time
+     * #### close: the closing price
+     * #### volume: volume
+     * #### ma_price20: average price
+     * #### ma_volume20: average number of shares traded
+     #### It is worth noting that the volume is in hundreds of shares.
+
+   * ### Data fetching, and saving
+     #### In order to fetch the stock data as quickly as possible, reduce API response time, and facilitate plotting, we specify that we fetch 500 pieces of data per stock, with an interval of 60 and an average value of 5.
+     #### To make crawling and storing data efficient, we have encapsulated a data collection class `Stock`. The initialisation function of this class accepts an incoming value `code`, the stock code, as follows.
+     ```python
+     class Stock:
+         def __init__(self, code, scale=5, ma=5, datalen=5):
+             self.code = code
+             # Intervals (minutes)
+             self.scale = scale
+             self.ma = ma
+             # of individuals
+             self.datalen = datalen
+             self.bass_message_list = False
+     ```
+     #### The default values for `scale`, `ma` and `datalen` are 5, 5 and 5 respectively, so if you need to change these parameters you can do so directly. The main method for obtaining API data in this class is `get_storage_list`, as shown in the figure below.
+     ```python
+        def get_storage_list(self) -> [[]]:
+            all_list_data = []
+            url = 'http://money.finance.sina.com.cn/quotes_service/api/json_v2.php' \
+                '/CN_MarketData.getKLineData?symbol={0}&scale={1}&ma={2}&datalen=' \
+                '{3}'.format(self.code, self.scale, self.ma, self.datalen)
+            res = requests.get(url=url).json()
+            for each_data in res:
+                all_list_data.append(
+                    [
+                        # Time
+                        each_data['day'],
+                        # Opening price
+                        each_data['open'],
+                        # Highest price
+                        each_data['high'],
+                        # Lowest price
+                        each_data['low'],
+                        # Closing price
+                        each_data['close'],
+                        # Volume (in hundreds of shares)
+                        each_data['volume']
+                    ]
+                )
+            return all_list_data
+     ```
+     #### In the session to get the data, we only get 6 key fields, i.e. time, open, high, low, close and volume. Once the data is obtained, the method `storage_csv` is called to store it as a `csv` file. This is shown below.
+     ```python
+     @property
+     def storage_csv(self):
+         try:
+             csv_obj = CSVkit.write(PATH='{0}.csv'.format(self.code),
+                                   header=["Time", "Open", "High", "Low", "Close", "Volume"],
+                                   rows=self.get_storage_list())
+             return csv_obj
+         except Exception as e:
+             return str(e)
+     ```
+     #### To use it, pass the stock code into the `Stock` class, it will crawl the data according to the default settings and then store the fetched file in a csv file in the current folder with the name of the stock. The file format is
+      | Stock Code | Open | High | Low | Close | Volume |
+      | -------- | -------- | ------ | ------ | ------- | ------- |
+      | data | data | data | data | data | data | data | data
+      | ...    | ...    | ...   ... | data | data | data | data | data | ...  ... | ...   | ...   |...
+## Data preparation and cleaning
+   * ### Reading data from an already stored `csv` file
+     #### We have defined a function to fetch `csv` data as follows.
+     ```python
+     import csv 
+     # Read CSV functions
+     def CSVread(PATH, Reading_method='r'):
+         with open(PATH, Reading_method) as this_file_read:
+         csv_reader = csv.reader(this_file_read)
+         _content_List_ = []
+         for i in csv_reader:
+             _content_List_.append(i)
+         return _content_List_
+     ```
+     #### This function accepts an incoming value `PATH` which is the file address of the file to be read, and `Reading_method` which is the reading method, defaulting here to `r`, i.e. read-only mode. The function uses Python's own `csv` library to read, storing each line of the file in a list, and then storing each line list to a total list to return for subsequent iterations of the data.
+   * ### Define class `CSVobjects` to initially clean the data
+     #### Its role is to read the contents of the target csv file and has multiple functions for extracting information from the target csv file, as follows.
+      ```python
+      class CSVobjects:
+          def __init__(self, _content: list):
+          self._content = _content
+      ```
+      #### The initialization function accepts a `_content` field. This field is a list of the contents of the target function, i.e. the `CSVread` function that needs to be called as described above. The initialisation function copies it to the class variable `_content` to facilitate subsequent calls to class functions within the class.
+      The #### main function `specifyROW` is used to return a list of data in the appropriate range based on the user's input, as follows
+      ```python
+       def specifyROW(self, **kwargs) -> str or list:
+           """
+          :param kwargs: start_num:int,end_num:int,equal:bool
+          :return: List
+
+          * When equal is true, data in the range `[start_num,end_num]` will be returned
+
+          * When equal is False, data in the range `[start_num,end_num)` will be returned
+          """
+          if "start_num" not in kwargs:
+               kwargs.setdefault("start_num", 0)
+          if "end_num" not in kwargs:
+               kwargs.setdefault("end_num", len(self._content))
+          if "equal" not in kwargs:
+               kwargs.setdefault("equal", False)
+
+          start_num = int(kwargs["start_num"])
+          end_num = int(kwargs["end_num"])
+
+          if start_num >= end_num:
+               return "start_num '%s' must smaller than '%s" % (start_num, end_num)
+          elif start_num < 0 or end_num < 0:
+               return "input must bigger than 0 or it is 0."
+          else:
+               return_list:[] = []
+               for i in self.__get_iterator(start_num,end_num,kwargs["equal"]):
+                    return_list.append(self._content[i])
+               return return_list
+     ```
+     #### This class of functions can receive multiple input values, the input value `start_num` represents the start index position, for example, when `start_num` is 0, it will return the first line of the csv file, that is, the location of the file header; `end_num` for the end index position, if not passed in these two parameters, the program will default to the full list of data returned; ` equal` indicates whether the end index position is desirable, if `True` is considered desirable, then the returned data list contains the data list of the line where the end index position is located.
+     #### This function calls a private function of the class `__get_iterator` to scan the entire list of data item by item according to the condition and then return the target list of data. This is shown below.
+     ```python
+     @staticmethod
+     def __get_iterator(start_value: int, end_value: int, equal: bool):
+          if equal == True:
+               while start_value <= end_value:
+                    yield start_value
+                    start_value += 1
+          else:
+               while start_value < end_value:
+                    yield start_value
+                    start_value += 1
+     ```
+     #### The class decorator `@staticmethod` transforms `__get_iterator` into a static method (in line with the PEP8 specification), which essentially generates an iterator that keeps returning the data that matches the condition to the list based on the condition. This has the advantage of not taking up too much memory and saving time.
+     #### In addition, the `CSVobjects` class has the method `header` to return the file header of the current csv file, as follows.
+     ```python
+     @property
+     def header(self):
+          return self._content[:1][0]
+     ```
+     #### This part is more important for further data pre-processing later on
+     * ### Using the `pandas` library to clean, manage data
+     #### pandas is a powerful toolset for analysing structured data; it is based on the use of Numpy (which provides high performance matrix operations); it is used for data mining and data analysis, and also provides data cleansing capabilities. This project uses its built-in `DateFrame` module to manage the data
+     #### According to the requirements of the project, we need to check if there are any gaps in the target data and get a list of the data in the target csv file arranged in columns. To do this we define a function `return_DF_list` that does.
+     ```python
+     def return_DF_list(code):
+          var_path = './Storage/{0}.csv'.format(code)
+          CSVobj = CSVobjects(_content=CSVread(PATH=var_path))
+          all_content = CSVobj.specifyROW()[1:]
+          header = CSVobj.header
+          index = CSVobj.index
+          DF = pd.DataFrame(data=all_content, columns=header, index=index)
+          # Get the number of rows
+          All_Rows = DF.shape[0]
+          # Get the number of columns
+          All_Columns = DF.shape[1]
+          # Get the statistics
+          # print(DF.describe())
+          # Determine if any values are empty
+          ALL_list = []
+          for columns in header:
+               the_loop = []
+               for rows in range(1, All_Rows + 1):
+                    time.sleep(0.001)
+                    cur_value = DF.loc[rows, '{0}'.format(columns)]
+                    the_loop.append(cur_value)
+                    print('\r', "< {0} > The system is checking the value of column label {1}".format(var_path, columns) + "and row label {0}".format(rows), end='', flush=True)
+                    if not cur_value:
+                         print('The value of column label {0}, row label {1} is empty. '.format(columns, rows))
+                    else:
+                         pass
+               ALL_list.append(the_loop)
+          return ALL_list
+     ```
+     #### As shown in the code above, the function accepts a parameter `code`, which is the stock code, the function will automatically stitch into the corresponding file path and use `CSVobjects` to initially collate the data, then construct `pd.DataFrame` after obtaining the initial list of data and the file header. Once loaded, it will iterate over the row labels (i.e. the file header) and then iterate over the row labels twice under them, using the `DF.loc` function to locate the elements in the current table and determine if they are empty. If it is empty the program will print the empty value and stop running. The program will then progressively read and determine the value of each table and store the data for each column by row label.
+     The #### `return_DF_list` function will eventually return a list of the data in the csv file grouped by row labels. Subsequent analysis of the data is based on this data.
+## Analysis of the data and questioning
+   * ### Using the web interface to display K-line charts
+     #### This project uses Python's built-in `Socket` library to implement a simple HTTP server to display HTML pages. It is shown below.
+     ```python
+        sock = socket.socket()
+        port = 8000
+        while True:
+            try:
+                sock.bind(("127.0.0.1", port))
+                sock.listen(5)
+                print('Go to http://{0}:{1} to view the report'.format('127.0.0.1', port))
+                break
+            except:
+                port += 1
+                continue
+        while True:
+            conn, addr = sock.accept()
+            data = conn.recv(1000000000)
+            print("You Get: ", data)  # 打印请求内容
+
+            try:
+                conn.send(b'HTTP/1.1 200 OK\r\n\r\n')
+                conn.send(b'%s' % bytes(r_d, encoding="utf8"))
+            except:
+                continue
+
+            conn.close()
+     ```
+     #### As described above, the program first creates a new socket using `socket.socket()`, then binds the local port `8000` and listens on this port. It then uses `While True` to constantly prepare to receive requests from users. If a user request is received, the HTML file of the display interface is returned to the user.
+     #### r_d is the content of the HTML file of the display interface, which needs to be converted to Byte type before it can be sent to the user
+     #### The front-end page uses the `Echarts` framework to display the data. ECharts, an open source visualisation library implemented in JavaScript, runs smoothly on PC and mobile devices and is compatible with most current browsers (IE8/9/10/11, Chrome, Firefox, Safari, etc.), the underlying Relies on the lightweight vector graphics library ZRender to provide intuitive, interactive and highly customisable data visualisation charts.
+     #### `ECharts` provides the usual line, bar, scatter, pie and K-line charts, box charts for statistics, maps, heat maps and line charts for geographic data visualisation, relationship and sunburst charts for relational data visualisation, parallel coordinates for multidimensional data visualisation, funnel charts for BI, dashboards and support for mixing and matching between charts.
+     #### `Echarts` is introduced as follows.
+     ```html
+     <!DOCTYPE html>
+          <html>
+          <head>
+          <meta charset="utf-8" />
+          <!-- 引入刚刚下载的 ECharts 文件 -->
+          <script src="echarts.js"></script>
+          </head>
+        </html>
+     ```
+     #### We configure the charts using one of the professional k-line chart configuration items. This chart is highly interactive, responsive and has a professional looking interface. The configuration items are shown below
+     ```javascript
+     var myChart = echarts.init(document.getElementById('mainnew'));
+     const upColor = '#ec0000';
+     const upBorderColor = '#8A0000';
+     const downColor = '#00da3c';
+     const downBorderColor = '#008F28';
+     // Each item: open，close，lowest，highest
+     const data0 = splitData(
+     Your Data List
+     );
+     function splitData(rawData) {
+     const categoryData = [];
+     const values = [];
+     for (var i = 0; i < rawData.length; i++) {
+     categoryData.push(rawData[i].splice(0, 1)[0]);
+     values.push(rawData[i]);
+     }
+     return {
+     categoryData: categoryData,
+     values: values
+     };
+     }
+     function calculateMA(dayCount) {
+     var result = [];
+     for (var i = 0, len = data0.values.length; i < len; i++) {
+     if (i < dayCount) {
+          result.push('-');
+          continue;
+       }
+     var sum = 0;
+     for (var j = 0; j < dayCount; j++) {
+          sum += +data0.values[i - j][1];
+     }
+     result.push(sum / dayCount);
+     }
+     return result;
+     }
+     ```
+     #### As shown above, simply replace `Your Data List` with a list of data retrieved from within the program. The list data format is
+     ```python
+     [[time, open, high, low, close, volume], [... , ...] , ...]
+     ```
+     #### Code needs to be written to clean the stock data to be analysed. As shown below.
+     ```python
+     # Self-selected stocks, manually enter the stock code
+     ALL_list = return_DF_list(code='sz002217')
+     # SSE index
+     ALL_list_sh = return_DF_list(code='sh000001')
+     # The k-line chart for this period (WEB display)
+     k = []
+     # all_times = [i for i in ALL_list[0]]
+     for i in range(0, len(ALL_list[0])):
+          k.append(
+               [
+               ALL_list[0][i],
+               float(ALL_list[1][i]),
+               float(ALL_list[2][i]),
+               float(ALL_list[3][i]),
+               float(ALL_list[4][i]),
+               float(ALL_list[5][i])
+               ]
+          )
+     with open('Templates/show.html', 'r') as f:
+            r_d = f.read().replace('@data', str(k))
+     ```
+     #### As shown above, the user customizes the input of two stock codes (which must be stored in csv beforehand), gets the corresponding data list through the `return_DF_list` function, and then iterates over it, taking out each piece of data and putting it into the total list; then opens the file where the front-end is located through `open`, replaces the obtained data into it, and finally sends the replaced data then open the file in which the front-end is located by `open` and replace it with the data obtained.
+     ! [Image text](Storage/PIC/K line chart report.png)
+
+   * ### Use the web interface to show the difference between the broad market and the currently selected stock for different indicators
+     #### The specific front-end configuration method is similar to the above. The data acquisition method needs to be written by yourself, as shown below.
+     ```python
+     
+     def draw_sh_this(input_list_stock, sh_stock_list, type='open'):
+          global flag_num
+          publicTime = []
+          public_all = []
+          public_sh = []
+          for eachTIMES in input_list_stock[0]:
+               if eachTIMES in sh_stock_list[0]:
+                    publicTime.append(eachTIMES)
+          for i in range(0, len(input_list_stock[0])):
+               if input_list_stock[0][i] in publicTime:
+                    public_all.append(
+                         [
+                              input_list_stock[0][i],
+                              input_list_stock[1][i],
+                              input_list_stock[2][i],
+                              input_list_stock[3][i],
+                              input_list_stock[4][i],
+                              input_list_stock[5][i],
+                         ]
+                    )
+          for j in range(0, len(sh_stock_list[0])):
+               if sh_stock_list[0][j] in publicTime:
+                    public_sh.append(
+                    [
+                              sh_stock_list[0][j],
+                              sh_stock_list[1][j],
+                              sh_stock_list[2][j],
+                              sh_stock_list[3][j],
+                              sh_stock_list[4][j],
+                              sh_stock_list[5][j],
+                    ]
+                    )
+          if type == 'open':
+               flag_num = 1
+          elif type == 'high':
+               flag_num = 2
+          elif type == 'low':
+               flag_num = 3
+          elif type == 'close':
+               flag_num = 4
+          elif type == 'volume':
+               flag_num = 5
+          x_label_sh = [float(i[flag_num]) for i in public_sh]
+          x_label = [float(i[flag_num]) for i in public_all]
+          times_sh = [i[0] for i in public_sh]
+          return str(x_label_sh), str(x_label), str(times_sh), type
+     ```
+     #### As shown above, the function takes three fields, the first `input_list_stock` accepts a list of data for the selected stock; the second parameter `sh_stock_list` is a list of data for the broad market and `type` is the name of the indicator to be extracted, optionally open, close, high, low and volme.
+     #### iterates over each of the two lists, extracting the target parameters (depending on the value of type) and the respective time lists and returning them. Subsequent code will embed this in the HTML page and eventually render the chart. This is shown below
+     #### ![Image text](DataAnalytics/Storage/PIC/echarts.png)
+     
+
+   * ### Question 1: Correlation analysis of stock averages and equity numbers
+     #### The first step is for the user to select the stock codes to be analysed (data must be obtained well in advance and stored in a csv file), as shown in the figure.
+     ```python
+     class Setting(object):
+          def __init__(self):
+          # Custom rules need to be added to this again
+          self.all_return = []
+
+          @staticmethod
+          def add(func):
+               def target_adding():
+                    target_static = {}
+                    for eachscode in func():
+                         target_static['{0}'.format(eachscode)] = './Storage/{0}.csv'.format(eachscode)
+                    return target_static
+               return target_adding()
+
+          @property
+        def return_all_static(self) -> dict:
+                @self.add
+                def _():
+                    static_lists = [
+                        'sz002217',
+                        'sz000620',
+                        'sz002613',
+                        'sz002317',
+                        'sz300398',
+                        'sh600476'
+                    ]
+                    return static_lists
+                return _
+     ```
+     #### As shown above, we have written a `Setting` class that gets the user's selection, which defines a main function `return_all_static`. Within this function, an unnamed function `_` is decorated with the `add` decorator, which returns a list of stocks, which are the stock codes to be compared. The decorator transforms the list of stocks within this function into a dictionary in the format of
+     ```text
+     "stock code" : "corresponding data file storage address"
+     ```
+     #### The advantage of this is that the user only needs to delete the list of stocks within the nameless function, after which the data cleaning program can determine which stocks need to be cleaned for the program, facilitating the management of the stock data visualisation by the user.
+     #### The second step is to write the data visualisation code to extract the relevant stock data and perform the data extraction based on the stock code selected by the user, as follows.
+     ```python
+     def boxplot(input_dict):
+          labels = []
+          alldata = []
+          for code, paths in input_dict.items():
+               labels.append(code)
+               cur_all_average = []
+               list_cur = return_DF_list(code=code)
+               for j in range(0, len(list_cur[0])):
+                    cur_all_average.append(
+                              (float(list_cur[2][j]) + float(list_cur[3][j])) / 2,
+                    )
+               alldata.append(cur_all_average)
+
+          plt.boxplot(alldata, labels=labels)
+        plt.show()
+     ```
+     #### As shown above, the function `boxplot` accepts an `input_dict` parameter in the format of a dictionary. The dictionary is all the ticker symbols that need to be displayed visually. The program iterates through the dictionary by disassembling the dictionary key-value pairs, putting all the keys of the dictionary, i.e. the ticker symbols, into the `label` list; at the same time, according to the value, i.e. the path of the file corresponding to the ticker data, the `return_DF_list` method is used to obtain a list of all the data in that file (sorted by column label). It is now known that the ones in the second and third positions correspond to the lowest and highest prices of the stock. These two variables are taken out of the iterator and averaged to obtain a list of the means of all the data bars for the stock, which is then stored in the list `cur_all_average`. Finally a box plot is drawn using plt. The results of the run are shown below.
+     #### ! [Image text](box.jpg)
+     #### As can be seen from the graph, sz002317 has the highest overall mean and the entire box is at the highest and the box is the longest in width, indicating the highest variance and the lowest stability. This means that sz300398 has the highest returnable range, but also the highest risk due to the high and variable share price. sz002217 and sz000620 have about the same stability in comparison, both being at a lower level with a smoother share price, but are more suitable for risk averse investment players as sz000620 has a lower share price and the lowest overall and mean values.
+   * ### Question 2: Correlation analysis of stock averages and number of share capital
+     #### The data cleaning process is shown below.
+     ```python
+    
+     # Average price: Self-selecting function
+     averge_self_stock = [(float(i[2]) + float(i[3]))/2 for i in public_all] 。
+     # Average price: Large property
+     averge_sh_stock = [(float(i[2]) + float(i[3])) / 2 for i in public_sh] ?
+     # Scatterplot
+     plt.scatter(averge_self_stock, averge_sh_stock, color='red', label='TEST')
+     plt.legend()  # Show legend
+     plt.show()
+     return str(x_label_sh), str(x_label), str(times_sh), type
+     ```
+     #### A stock code is selected and a list of its data is obtained using `return_DF_list` and this analysis is also performed on the broader stock market. It is then necessary to find the intersection of the stock in time that overlaps with the broader market data in time, and gradually remove the common parts by iterative methods until the cleaning is finally completed. The final front-end rendering is shown below
+     #### ![Image text](plot.jpg)
+     #### From the graph, we can see that the share price of sz002217 and the price of the general market are positively correlated, from the lower left corner of the image to the upper right is the correlation tendency of the image. The higher the price of the broader market, the higher the share price becomes; when the broader market moves badly, the share price also falls off.
+   * ### Question 3: Relationship between trading volume and share price (mean) of a stock
+     #### It can be seen that it is only necessary to obtain the time series as well as the share price as follows
+     ```python
+     def q3(code):
+          the_stock_list = return_DF_list(code=code)
+          # Trading volume for this period
+          v = [float(i) / 39030660 for i in the_stock_list[5]]
+          print('\n')
+          print(v)
+          times = the_stock_list[0]
+          aver_price = []
+          for i in range(0, len(the_stock_list[0])):
+               aver_price.append((float(the_stock_list[2][i]) + float(the_stock_list[3][i])) / 2)
+          print(aver_price)
+          plt.plot(times, aver_price, color='green', label='aver_price')
+          plt.bar(times, v, color='red', label='Volume')
+          plt.savefig('q3.jpg')
+          plt.legend()
+          plt.yticks([])  # Removing the y-axis
+
+          plt.xticks([])  # Removing the x-axis
+          plt.show()
+     ```
+     As shown above, the function `q3` takes one argument `code`. The function `return_DF_list` is called to obtain a list of data for that stock. The data list is iterated through, and since the lowest and highest prices are in the third and fourth columns of the list, this logic is used to extract the lowest and highest prices and average them out into the list. The same can be done for the time list and the volume list. Using plt for plotting, with stock code `sz00060` as an example, the chart is shown below.
+     #### ![Image text](q3.png)
+     #### The waveform on the chart shows that volume and price are positively correlated, with the stock price on a downward trend when volume is at a low point, and a higher slope when volume surges.
+
+   
+
+   
+     
+   
+     
